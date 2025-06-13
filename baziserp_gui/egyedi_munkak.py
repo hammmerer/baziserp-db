@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QColor, QBrush
 from datetime import datetime, timedelta
 import random
+from db import get_connection
 
 
 class EgyediMunkakTab(QWidget):
@@ -16,6 +17,8 @@ class EgyediMunkakTab(QWidget):
         self.start_date = self.today
         self.num_days = 40
 
+        self.example_data = []
+        
         self.init_ui()
 
     def init_ui(self):
@@ -35,23 +38,60 @@ class EgyediMunkakTab(QWidget):
         
         # Jobb oldal: beviteli mezők és gombok
         form_layout = QVBoxLayout()
+        self.name_input = QLineEdit()
+        self.munkaszam_input = QLineEdit()
 
-        self.fel_terv_input = QLineEdit()
-        self.fel_fix_input = QLineEdit()
-        self.ossz_input = QLineEdit()
-        self.besz_input = QLineEdit()
-        self.besz_fix_input = QLineEdit()
+        self.fel_terv_tol_input = QDateEdit()
+        self.fel_terv_ig_input = QDateEdit()
+        self.fel_fix_input = QDateEdit()
+        self.szabaszati_input = QDateEdit()
+        self.ossz_tol_input = QDateEdit()
+        self.ossz_ig_input = QDateEdit()
+        self.besz_tol_input = QDateEdit()
+        self.besz_ig_input = QDateEdit()
+        self.besz_fix_tol_input = QDateEdit()
+        self.besz_fix_ig_input = QDateEdit()
 
-        form_layout.addWidget(QLabel("Felmérés terv"))
-        form_layout.addWidget(self.fel_terv_input)
+        for d in [self.fel_terv_tol_input, self.fel_terv_ig_input,
+                  self.fel_fix_input, self.szabaszati_input,
+                  self.ossz_tol_input, self.ossz_ig_input,
+                  self.besz_tol_input, self.besz_ig_input,
+                  self.besz_fix_tol_input, self.besz_fix_ig_input]:
+            d.setCalendarPopup(True)
+            d.setDisplayFormat("yyyy.MM.dd")
+            d.setDate(QDate.currentDate())
+
+        form_layout.addWidget(QLabel("Megrendelő neve"))
+        form_layout.addWidget(self.name_input)
+        form_layout.addWidget(QLabel("Munkaszám"))
+        form_layout.addWidget(self.munkaszam_input)
+
+        form_layout.addWidget(QLabel("Felmérés terv – tól"))
+        form_layout.addWidget(self.fel_terv_tol_input)
+        form_layout.addWidget(QLabel("Felmérés terv – ig"))
+        form_layout.addWidget(self.fel_terv_ig_input)
+
         form_layout.addWidget(QLabel("Felmérés fix"))
         form_layout.addWidget(self.fel_fix_input)
-        form_layout.addWidget(QLabel("Összeszerelés terv"))
-        form_layout.addWidget(self.ossz_input)
-        form_layout.addWidget(QLabel("Beszerelés terv"))
-        form_layout.addWidget(self.besz_input)
-        form_layout.addWidget(QLabel("Beszerelés fix"))
-        form_layout.addWidget(self.besz_fix_input)
+
+        form_layout.addWidget(QLabel("Szabászat határidő"))
+        form_layout.addWidget(self.szabaszati_input)
+
+        form_layout.addWidget(QLabel("Összeszerelés terv – tól"))
+        form_layout.addWidget(self.ossz_tol_input)
+        form_layout.addWidget(QLabel("Összeszerelés terv – ig"))
+        form_layout.addWidget(self.ossz_ig_input)
+
+        form_layout.addWidget(QLabel("Beszerelés terv – tól"))
+        form_layout.addWidget(self.besz_tol_input)
+        form_layout.addWidget(QLabel("Beszerelés terv – ig"))
+        form_layout.addWidget(self.besz_ig_input)
+
+        form_layout.addWidget(QLabel("Beszerelés fix – tól"))
+        form_layout.addWidget(self.besz_fix_tol_input)
+        form_layout.addWidget(QLabel("Beszerelés fix – ig"))
+        form_layout.addWidget(self.besz_fix_ig_input)
+
 
         # Gombok
         btn_layout = QHBoxLayout()
@@ -66,23 +106,8 @@ class EgyediMunkakTab(QWidget):
         top_layout.addLayout(form_layout, 2)
 
 
-        self.example_data = [
-            ["E142", "Kiss János", "06.17–06.21", "06.18", "07.01–07.03", "07.04–07.08", "07.06–07.07"],
-            ["E143", "Nagy Béla", "06.12–06.13", "06.13", "06.20–06.22", "06.25–06.27", "06.26–06.27"],
-            ["E144", "Szabó Éva", "06.20–06.22", "06.21", "07.05–07.07", "07.08–07.10", "07.09–07.10"]
-        ]
-
-        for i in range(15):
-            munkaszam = f"E{145 + i}"
-            nev = f"Teszt Megrendelő {i+1}"
-            base = datetime(2025, 6, 10) + timedelta(days=random.randint(0, 90))
-            fel_terv = base.strftime("%m.%d") + "–" + (base + timedelta(days=2)).strftime("%m.%d")
-            fel_fix = (base + timedelta(days=1)).strftime("%m.%d")
-            ossz = (base + timedelta(days=10)).strftime("%m.%d") + "–" + (base + timedelta(days=12)).strftime("%m.%d")
-            besz = (base + timedelta(days=13)).strftime("%m.%d") + "–" + (base + timedelta(days=15)).strftime("%m.%d")
-            besz_fix = (base + timedelta(days=14)).strftime("%m.%d") + "–" + (base + timedelta(days=15)).strftime("%m.%d")
-            self.example_data.append([munkaszam, nev, fel_terv, fel_fix, ossz, besz, besz_fix])
-
+        
+        
         for row, sor in enumerate(self.example_data):
             for col, value in enumerate(sor):
                 self.data_table.setItem(row, col, QTableWidgetItem(value))
@@ -153,6 +178,44 @@ class EgyediMunkakTab(QWidget):
         self.refresh_table()
         
         self.update_calendar()
+
+    def load_data_from_db(self):
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+
+        query = """
+        SELECT em.id, m.munkaszam, m.megrendelo_nev,
+            em.felmeres_terv_start, em.felmeres_terv_end,
+            em.felmeres_fix, em.osszeszereles_terv_start,
+            em.osszeszereles_terv_end, em.beszereles_terv_start,
+            em.beszereles_terv_end, em.beszereles_fix_start,
+            em.beszereles_fix_end
+        FROM egyedi_megrendelesek em
+        JOIN megrendelesek m ON em.megrendeles_id = m.id;
+        """
+        cur.execute(query)
+        rows = cur.fetchall()
+        conn.close()
+
+        self.example_data = []
+        for row in rows:
+            def format_range(start, end):
+                if start and end:
+                    return start.strftime("%m.%d") + "–" + end.strftime("%m.%d")
+                elif start:
+                    return start.strftime("%m.%d")
+                return ""
+
+            self.example_data.append([
+                row["munkaszam"],
+                row["megrendelo_nev"],
+                format_range(row["felmeres_terv_start"], row["felmeres_terv_end"]),
+                row["felmeres_fix"].strftime("%m.%d") if row["felmeres_fix"] else "",
+                format_range(row["osszeszereles_terv_start"], row["osszeszereles_terv_end"]),
+                format_range(row["beszereles_terv_start"], row["beszereles_terv_end"]),
+                format_range(row["beszereles_fix_start"], row["beszereles_fix_end"])
+            ])
+
 
     def shift_days(self, days):
         self.start_date += timedelta(days=days)
@@ -344,3 +407,65 @@ class EgyediMunkakTab(QWidget):
                 cell = QTableWidgetItem()
                 cell.setBackground(QColor(hex_color))
                 self.naptar_table.setItem(row, col, cell)
+
+    def add_row(self):
+        try:
+            conn = get_connection()
+            cur = conn.cursor()
+
+            def parse_range(text):
+                parts = text.split("–")
+                if len(parts) == 2:
+                    return parts[0].strip(), parts[1].strip()
+                return parts[0].strip(), parts[0].strip()
+
+            fts, fte = parse_range(self.fel_terv_input.text())
+            ossz_s, ossz_e = parse_range(self.ossz_input.text())
+            besz_s, besz_e = parse_range(self.besz_input.text())
+            bf_s, bf_e = parse_range(self.besz_fix_input.text())
+
+            cur.execute("""
+            INSERT INTO egyedi_megrendelesek (
+                megrendeles_id,
+                felmeres_terv_start, felmeres_terv_end,
+                felmeres_fix,
+                osszeszereles_terv_start, osszeszereles_terv_end,
+                beszereles_terv_start, beszereles_terv_end,
+                beszereles_fix_start, beszereles_fix_end
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+            )
+            """, (
+                self.get_selected_megrendeles_id(),  # munkaszám alapján
+                datetime.strptime(fts, "%m.%d").replace(year=self.today.year),
+                datetime.strptime(fte, "%m.%d").replace(year=self.today.year),
+                datetime.strptime(self.fel_fix_input.text(), "%m.%d").replace(year=self.today.year),
+                datetime.strptime(ossz_s, "%m.%d").replace(year=self.today.year),
+                datetime.strptime(ossz_e, "%m.%d").replace(year=self.today.year),
+                datetime.strptime(besz_s, "%m.%d").replace(year=self.today.year),
+                datetime.strptime(besz_e, "%m.%d").replace(year=self.today.year),
+                datetime.strptime(bf_s, "%m.%d").replace(year=self.today.year),
+                datetime.strptime(bf_e, "%m.%d").replace(year=self.today.year)
+            ))
+
+            conn.commit()
+            conn.close()
+            self.load_data_from_db()
+            self.refresh_table()
+            self.update_calendar()
+        except Exception as e:
+            print("Hiba beszúrás közben:", e)
+
+    def get_selected_megrendeles_id(self):
+        selected_row = self.data_table.currentRow()
+        if selected_row < 0:
+            return None
+
+        munkaszam = self.data_table.item(selected_row, 0).text()
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM megrendelesek WHERE munkaszam = %s", (munkaszam,))
+        result = cur.fetchone()
+        conn.close()
+        return result[0] if result else None
+

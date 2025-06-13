@@ -25,6 +25,8 @@ class MainApp(QMainWindow):
         self.add_empty_tab("Optimalizálás")
         self.add_empty_tab("Beállítások")
 
+
+        
         self.setCentralWidget(self.tabs)
         self.tabs.setCurrentIndex(1)
         
