@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QEvent, QPoint, QTimer
 import pandas as pd
+#from baziserp_gui.db import get_connection
 
 class UjMegrendelesTab(QWidget):
     def __init__(self):

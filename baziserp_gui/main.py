@@ -6,6 +6,8 @@ from uj_szabaszat import UjMegrendelesTab
 from anyag_tab import AnyagokTab
 from egyedi_munkak import EgyediMunkakTab
 from login_dialog import LoginDialog  # ⬅️ ÚJ: importáljuk a login dialógust
+from db import get_supabase_data
+
 
 class MainApp(QMainWindow):
     def __init__(self, user_data):
@@ -50,3 +52,4 @@ if __name__ == "__main__":
         sys.exit(app.exec_())
     else:
         sys.exit()  # kilépés, ha nem jelentkezett be
+3
