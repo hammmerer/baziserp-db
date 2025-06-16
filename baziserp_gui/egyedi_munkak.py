@@ -6,6 +6,8 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QDate
 from datetime import datetime
 from db import get_supabase_data
+from PyQt5.QtGui import QColor
+
 
 class EgyediMunkakTab(QWidget):
     def __init__(self, parent=None):
@@ -62,6 +64,14 @@ class EgyediMunkakTab(QWidget):
         line1.addWidget(QLabel("Munkaszám"))
         line1.addWidget(self.munkaszam_input)
         form_group_layout.addLayout(line1)
+        
+        checkbox_line = QHBoxLayout()
+        self.eloleg_checkbox = QCheckBox("Előleg befizetve")
+        self.aktiv_checkbox = QCheckBox("Aktív")
+        self.aktiv_checkbox.setChecked(True)
+        checkbox_line.addWidget(self.eloleg_checkbox)
+        checkbox_line.addWidget(self.aktiv_checkbox)
+        form_group_layout.addLayout(checkbox_line)
 
         self.date_toggle = QCheckBox("Dátumok megadása")
         self.date_toggle.setChecked(False)
@@ -143,36 +153,8 @@ class EgyediMunkakTab(QWidget):
         self.data_table.cellClicked.connect(self.load_selected_row_data)
         self.data_table.currentCellChanged.connect(self.load_selected_row_data)
 
-    def refresh_table(self):
-        self.data_table.clearContents()
-        self.data_table.setRowCount(0)
-
-        headers = ["Munkaszám", "Megrendelő", "Előleg"]
-        keys = ["munkaszam", "megrendelo_neve", "eloleg_fizetve"]
-
-        self.data_table.setColumnCount(len(headers))
-        self.data_table.setHorizontalHeaderLabels(headers)
-
-        if self.active_only_checkbox.isChecked():
-            data = get_supabase_data("egyedi_megrendelesek", params={"aktiv": "eq.true"})
-        else:
-            data = get_supabase_data("egyedi_megrendelesek")
-
-        if not data:
-            print("Nincs adat vagy hiba történt a lekérdezés során.")
-            return
-
-        self.table_data = []
-
-        for row_index, record in enumerate(data):
-            self.data_table.insertRow(row_index)
-            self.table_data.append(record)
-
-            for col_index, key in enumerate(keys):
-                value = "igen" if record.get(key) is True else ("nem" if record.get(key) is False else str(record.get(key, "")))
-                self.data_table.setItem(row_index, col_index, QTableWidgetItem(value))
-
-        self.data_table.repaint()
+        
+    
     def load_selected_row_data(self, current_row, current_column, previous_row=None, previous_column=None):
         if current_row is None or current_row < 0 or current_row >= len(self.table_data):
             return
@@ -188,6 +170,9 @@ class EgyediMunkakTab(QWidget):
         self.date_toggle.setChecked(True)
         self.date_section.setVisible(True)
 
+        self.eloleg_checkbox.setChecked(adat.get("eloleg_fizetve", False))
+        self.aktiv_checkbox.setChecked(adat.get("aktiv", True))
+        
         def set_date_safe(widget, key):
             val = adat.get(key)
             if val:
@@ -208,3 +193,58 @@ class EgyediMunkakTab(QWidget):
         set_date_safe(self.besz_ig_input, "beszereles_terv_ig")
         set_date_safe(self.besz_fix_tol_input, "beszereles_fix_tol")
         set_date_safe(self.besz_fix_ig_input, "beszereles_fix_ig")
+        
+    def refresh_table(self):
+        self.data_table.clearContents()
+        self.data_table.setRowCount(0)
+
+        headers = ["Munkaszám", "Megrendelő", "Előleg", "Státusz"]
+        self.data_table.setColumnCount(len(headers))
+        self.data_table.setHorizontalHeaderLabels(headers)
+
+        params = {
+            "select": "*, egyedi_megrendeles_statuszok(nev)"
+        }
+        if self.active_only_checkbox.isChecked():
+            params["aktiv"] = "eq.true"
+
+        data = get_supabase_data("egyedi_megrendelesek", params=params)
+
+        if not data:
+            print("Nincs adat vagy hiba történt a lekérdezés során.")
+            return
+
+        self.table_data = []
+
+        for row_index, record in enumerate(data):
+                    
+
+            self.data_table.insertRow(row_index)
+            self.table_data.append(record)
+
+            munkaszam = str(record.get("munkaszam", ""))
+            megrendelo = str(record.get("megrendelo_neve", ""))
+            eloleg = "igen" if record.get("eloleg_fizetve") else "nem"
+            statusz = record.get("egyedi_megrendeles_statuszok", {}).get("nev", "")
+
+            munkaszam_item = QTableWidgetItem(munkaszam)
+            megrendelo_item = QTableWidgetItem(megrendelo)
+            eloleg_item = QTableWidgetItem(eloleg)
+            statusz_item = QTableWidgetItem(statusz)
+
+            if not record.get("aktiv", True):
+                inactive_color = QColor(220, 220, 220)
+                munkaszam_item.setBackground(inactive_color)
+                megrendelo_item.setBackground(inactive_color)
+                eloleg_item.setBackground(inactive_color)
+                statusz_item.setBackground(inactive_color)
+
+            if record.get("eloleg_fizetve") is True:
+                eloleg_item.setBackground(QColor(200, 255, 200))
+
+            self.data_table.setItem(row_index, 0, munkaszam_item)
+            self.data_table.setItem(row_index, 1, megrendelo_item)
+            self.data_table.setItem(row_index, 2, eloleg_item)
+            self.data_table.setItem(row_index, 3, statusz_item)
+
+        self.data_table.repaint()
