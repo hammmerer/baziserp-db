@@ -22,3 +22,24 @@ def get_supabase_data(table_name, params=None):
     except Exception as e:
         print(f"Hiba történt az adatok lekérésekor: {e}")
         return []
+    
+def insert_supabase_data(table, data):
+    url = f"{SUPABASE_URL}/rest/v1/{table}"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation"
+    }
+    response = requests.post(url, json=data, headers=headers)
+    return response.ok
+
+def update_supabase_data(table, record_id, data):
+    url = f"{SUPABASE_URL}/rest/v1/{table}?id=eq.{record_id}"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json"
+    }
+    response = requests.patch(url, json=data, headers=headers)
+    return response.ok
